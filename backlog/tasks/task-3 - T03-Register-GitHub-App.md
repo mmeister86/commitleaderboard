@@ -1,10 +1,10 @@
 ---
 id: TASK-3
 title: T03 - Register GitHub App
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-06-27 10:53'
-updated_date: '2026-06-28 18:38'
+updated_date: '2026-06-28 18:46'
 labels:
   - phase-1-lock-setup
   - v1
@@ -40,3 +40,9 @@ Verified webhook delivery after switching GitHub App webhook URL to Convex smoke
 
 Validation passed for TASK-3 smoke endpoint: pnpm run typecheck, pnpm run lint, pnpm convex dev --once, and pnpm run build. Initial build without network failed only because next/font could not fetch Google Fonts; rerun with network access passed.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Registered and verified Commit Leaderboard Dev GitHub App with selected private test repository access, Convex secrets including GITHUB_PRIVATE_KEY, a temporary Convex smoke webhook endpoint, and a successful push webhook delivery returning HTTP 200.
+<!-- SECTION:FINAL_SUMMARY:END -->
