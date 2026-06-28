@@ -1,11 +1,11 @@
 ---
 id: TASK-1
 title: T01 - Set up repo and stack skeleton
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-06-27 10:53'
-updated_date: '2026-06-28 17:00'
+updated_date: '2026-06-28 17:03'
 labels:
   - phase-1-lock-setup
   - v1
@@ -50,3 +50,9 @@ AC #2 remains pending manual signed-in browser verification: sign in with Clerk 
 
 User verified the signed-in page in Arc: Convex query rendered as authenticated with a Clerk tokenIdentifier. Follow-up bugfix: ViewerStatus now reads display name, username, and primary email from Clerk useUser() instead of expecting those fields in Convex JWT claims; Convex token remains shown as the backend auth proof. Verification after fix: pnpm run typecheck, pnpm run lint, and pnpm run build passed.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Set up the Next.js App Router stack skeleton with Clerk and Convex, added the authenticated viewer smoke path, normalized pnpm scripts/docs, verified checks, and confirmed signed-in rendering in the browser.
+<!-- SECTION:FINAL_SUMMARY:END -->
