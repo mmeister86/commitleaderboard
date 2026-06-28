@@ -1,7 +1,9 @@
 import { v } from "convex/values";
 
-import { internalMutation } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
+import { internalMutation, type MutationCtx } from "./_generated/server";
 import { canonicalizeGithubLogin } from "./lib/identityMapping";
+import { computeScore, type ScoreContribution } from "./lib/scoring";
 
 const contributionKind = v.union(
   v.literal("commit"),
@@ -16,9 +18,17 @@ const normalizedContributionCandidate = v.object({
   day: v.string(),
   onDefaultBranch: v.boolean(),
   githubLogin: v.union(v.string(), v.null()),
+  lines: v.optional(v.number()),
 });
 
 const contributionPeriods = ["weekly", "all_time"] as const;
+
+type ContributionPeriod = (typeof contributionPeriods)[number];
+
+type AffectedScoreKey = {
+  userId: Id<"users">;
+  period: ContributionPeriod;
+};
 
 export const ingestNormalizedContributions = internalMutation({
   args: {
@@ -41,6 +51,7 @@ export const ingestNormalizedContributions = internalMutation({
 
     let insertedContributionRows = 0;
     const now = Date.now();
+    const affectedScores = new Map<string, AffectedScoreKey>();
 
     for (const candidate of args.candidates) {
       const existingContribution = await ctx.db
@@ -74,11 +85,20 @@ export const ingestNormalizedContributions = internalMutation({
           kind: candidate.kind,
           externalId: candidate.externalId,
           repo: candidate.repo,
+          ...(candidate.lines === undefined ? {} : { lines: candidate.lines }),
           onDefaultBranch: candidate.onDefaultBranch,
           createdAt: now,
         });
         insertedContributionRows += 1;
+        affectedScores.set(scoreKey(user._id, period), {
+          userId: user._id,
+          period,
+        });
       }
+    }
+
+    for (const affectedScore of affectedScores.values()) {
+      await recomputeScore(ctx, affectedScore, now);
     }
 
     await ctx.db.insert("webhookDeliveries", {
@@ -94,3 +114,51 @@ export const ingestNormalizedContributions = internalMutation({
     };
   },
 });
+
+function scoreKey(userId: Id<"users">, period: ContributionPeriod) {
+  return `${userId}:${period}`;
+}
+
+async function recomputeScore(
+  ctx: MutationCtx,
+  key: AffectedScoreKey,
+  now: number,
+) {
+  const contributions: ScoreContribution[] = [];
+
+  for await (const contribution of ctx.db
+    .query("contributions")
+    .withIndex("by_user_id_and_period", (q) =>
+      q.eq("userId", key.userId).eq("period", key.period),
+    )) {
+    contributions.push({
+      kind: contribution.kind,
+      day: contribution.day,
+      lines: contribution.lines,
+      onDefaultBranch: contribution.onDefaultBranch,
+    });
+  }
+
+  const score = computeScore(contributions);
+  const existingScore = await ctx.db
+    .query("scores")
+    .withIndex("by_user_id_and_period", (q) =>
+      q.eq("userId", key.userId).eq("period", key.period),
+    )
+    .unique();
+
+  if (existingScore === null) {
+    await ctx.db.insert("scores", {
+      userId: key.userId,
+      period: key.period,
+      ...score,
+      updatedAt: now,
+    });
+    return;
+  }
+
+  await ctx.db.patch(existingScore._id, {
+    ...score,
+    updatedAt: now,
+  });
+}

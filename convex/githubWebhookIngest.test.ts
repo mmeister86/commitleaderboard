@@ -20,6 +20,16 @@ const resolvedPushCandidate = {
   githubLogin: "mmeister86",
 } satisfies NormalizedContributionCandidate;
 
+const scoredPushCandidate = {
+  ...resolvedPushCandidate,
+  lines: 10,
+};
+
+const periodOrder = {
+  weekly: 0,
+  all_time: 1,
+};
+
 describe("ingestNormalizedContributions", () => {
   test("duplicate webhook deliveries insert contributions only once", async () => {
     const t = convexTest(schema, modules);
@@ -28,12 +38,12 @@ describe("ingestNormalizedContributions", () => {
     await t.mutation(ingestNormalizedContributions, {
       deliveryId: "delivery-1",
       event: "push",
-      candidates: [resolvedPushCandidate],
+      candidates: [scoredPushCandidate],
     });
     await t.mutation(ingestNormalizedContributions, {
       deliveryId: "delivery-1",
       event: "push",
-      candidates: [resolvedPushCandidate],
+      candidates: [scoredPushCandidate],
     });
 
     await expect(listContributions(t)).resolves.toHaveLength(2);
@@ -42,6 +52,22 @@ describe("ingestNormalizedContributions", () => {
         deliveryId: "delivery-1",
         event: "push",
         insertedContributionRows: 2,
+      },
+    ]);
+    await expect(listScores(t)).resolves.toEqual([
+      {
+        userId: expect.any(String),
+        period: "weekly",
+        points: 19,
+        streak: 1,
+        commits: 1,
+      },
+      {
+        userId: expect.any(String),
+        period: "all_time",
+        points: 19,
+        streak: 1,
+        commits: 1,
       },
     ]);
   });
@@ -53,12 +79,12 @@ describe("ingestNormalizedContributions", () => {
     await t.mutation(ingestNormalizedContributions, {
       deliveryId: "delivery-1",
       event: "push",
-      candidates: [resolvedPushCandidate],
+      candidates: [scoredPushCandidate],
     });
     await t.mutation(ingestNormalizedContributions, {
       deliveryId: "delivery-2",
       event: "push",
-      candidates: [resolvedPushCandidate],
+      candidates: [scoredPushCandidate],
     });
 
     await expect(listContributions(t)).resolves.toHaveLength(2);
@@ -70,6 +96,22 @@ describe("ingestNormalizedContributions", () => {
       {
         deliveryId: "delivery-2",
         insertedContributionRows: 0,
+      },
+    ]);
+    await expect(listScores(t)).resolves.toEqual([
+      {
+        userId: expect.any(String),
+        period: "weekly",
+        points: 19,
+        streak: 1,
+        commits: 1,
+      },
+      {
+        userId: expect.any(String),
+        period: "all_time",
+        points: 19,
+        streak: 1,
+        commits: 1,
       },
     ]);
   });
@@ -105,6 +147,81 @@ describe("ingestNormalizedContributions", () => {
       },
     ]);
   });
+
+  test("a resolved commit updates weekly and all-time score rows", async () => {
+    const t = convexTest(schema, modules);
+    const userId = await seedUser(t, "mmeister86");
+
+    await t.mutation(ingestNormalizedContributions, {
+      deliveryId: "delivery-1",
+      event: "push",
+      candidates: [scoredPushCandidate],
+    });
+
+    await expect(listScores(t)).resolves.toEqual([
+      {
+        userId,
+        period: "weekly",
+        points: 19,
+        streak: 1,
+        commits: 1,
+      },
+      {
+        userId,
+        period: "all_time",
+        points: 19,
+        streak: 1,
+        commits: 1,
+      },
+    ]);
+  });
+
+  test("a second commit recomputes score rows from all stored contributions", async () => {
+    const t = convexTest(schema, modules);
+    const userId = await seedUser(t, "mmeister86");
+
+    await t.mutation(ingestNormalizedContributions, {
+      deliveryId: "delivery-1",
+      event: "push",
+      candidates: [
+        {
+          ...resolvedPushCandidate,
+          externalId: "github:commit:first",
+          day: "2026-06-27",
+          lines: 1,
+        },
+      ],
+    });
+    await t.mutation(ingestNormalizedContributions, {
+      deliveryId: "delivery-2",
+      event: "push",
+      candidates: [
+        {
+          ...resolvedPushCandidate,
+          externalId: "github:commit:second",
+          day: "2026-06-28",
+          lines: 1,
+        },
+      ],
+    });
+
+    await expect(listScores(t)).resolves.toEqual([
+      {
+        userId,
+        period: "weekly",
+        points: 22,
+        streak: 2,
+        commits: 2,
+      },
+      {
+        userId,
+        period: "all_time",
+        points: 22,
+        streak: 2,
+        commits: 2,
+      },
+    ]);
+  });
 });
 
 type TestDatabase = {
@@ -132,8 +249,6 @@ async function listContributions(t: TestDatabase) {
     const contributions = await ctx.db.query("contributions").collect();
 
     return contributions.map((row) => {
-      expect(row.lines).toBeUndefined();
-
       return {
         userId: row.userId,
         period: row.period,
@@ -156,5 +271,21 @@ async function listDeliveries(t: TestDatabase) {
       event: row.event,
       insertedContributionRows: row.insertedContributionRows,
     }));
+  });
+}
+
+async function listScores(t: TestDatabase) {
+  return await t.run(async (ctx: MutationCtx) => {
+    const scores = await ctx.db.query("scores").collect();
+
+    return scores
+      .map((row) => ({
+        userId: row.userId,
+        period: row.period,
+        points: row.points,
+        streak: row.streak,
+        commits: row.commits,
+      }))
+      .sort((left, right) => periodOrder[left.period] - periodOrder[right.period]);
   });
 }
