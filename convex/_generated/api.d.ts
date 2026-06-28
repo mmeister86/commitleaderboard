@@ -9,7 +9,9 @@
  */
 
 import type * as http from "../http.js";
+import type * as githubWebhookIngest from "../githubWebhookIngest.js";
 import type * as identityMapping from "../identityMapping.js";
+import type * as lib_githubWebhookPayloads from "../lib/githubWebhookPayloads.js";
 import type * as lib_identityMapping from "../lib/identityMapping.js";
 import type * as lib_scoring from "../lib/scoring.js";
 import type * as viewer from "../viewer.js";
@@ -22,7 +24,9 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   http: typeof http;
+  githubWebhookIngest: typeof githubWebhookIngest;
   identityMapping: typeof identityMapping;
+  "lib/githubWebhookPayloads": typeof lib_githubWebhookPayloads;
   "lib/identityMapping": typeof lib_identityMapping;
   "lib/scoring": typeof lib_scoring;
   viewer: typeof viewer;

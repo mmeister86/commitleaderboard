@@ -57,6 +57,13 @@ export default defineSchema({
     .index("by_user_id_and_period", ["userId", "period"])
     .index("by_user_id_and_day", ["userId", "day"]),
 
+  webhookDeliveries: defineTable({
+    deliveryId: v.string(),
+    event: v.string(),
+    receivedAt: v.number(),
+    insertedContributionRows: v.number(),
+  }).index("by_delivery_id", ["deliveryId"]),
+
   scores: defineTable({
     userId: v.id("users"),
     period,
