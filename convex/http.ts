@@ -3,11 +3,13 @@ import { httpRouter } from "convex/server";
 import { internal } from "./_generated/api";
 import { httpAction } from "./_generated/server";
 import {
-  extractPushAuthorCandidates,
   parseWebhookJson,
-  summarizeAuthorResolutions,
   verifyGitHubWebhookSignature,
 } from "./lib/identityMapping";
+import {
+  isSupportedGitHubWebhookEvent,
+  normalizeGitHubWebhookPayload,
+} from "./lib/githubWebhookPayloads";
 
 const http = httpRouter();
 
@@ -36,37 +38,52 @@ http.route({
       return new Response("Invalid signature", { status: 401 });
     }
 
-    if (event === "push") {
-      const payload = parseWebhookJson(body);
-
-      if (!payload.ok) {
-        console.warn("Rejected GitHub push webhook with invalid JSON", {
-          delivery,
-        });
-
-        return new Response("Invalid JSON", { status: 400 });
-      }
-
-      const candidates = extractPushAuthorCandidates(payload.value);
-      const resolutions = await ctx.runQuery(
-        internal.identityMapping.resolvePushAuthorCandidates,
-        { candidates },
-      );
-
-      console.log("GitHub push identity mapping proof", {
+    if (!isSupportedGitHubWebhookEvent(event)) {
+      console.log("Ignored unsupported GitHub webhook event", {
         delivery,
-        ...summarizeAuthorResolutions(resolutions),
+        event,
       });
+
+      return Response.json({ ok: true, ignored: true });
     }
 
-    console.log("Received GitHub webhook smoke delivery", {
+    if (delivery === null || delivery.trim() === "") {
+      console.warn("Rejected GitHub webhook with missing delivery id", {
+        event,
+      });
+
+      return new Response("Missing delivery id", { status: 400 });
+    }
+
+    const payload = parseWebhookJson(body);
+
+    if (!payload.ok) {
+      console.warn("Rejected GitHub webhook with invalid JSON", {
+        delivery,
+        event,
+      });
+
+      return new Response("Invalid JSON", { status: 400 });
+    }
+
+    const candidates = normalizeGitHubWebhookPayload(event, payload.value);
+    const result = await ctx.runMutation(
+      internal.githubWebhookIngest.ingestNormalizedContributions,
+      {
+        deliveryId: delivery,
+        event,
+        candidates,
+      },
+    );
+
+    console.log("Ingested GitHub webhook delivery", {
       delivery,
       event,
-      hasSignature: signature !== null,
-      bodyLength: body.length,
+      candidateCount: candidates.length,
+      ...result,
     });
 
-    return Response.json({ ok: true });
+    return Response.json({ ok: true, ...result });
   }),
 });
 
