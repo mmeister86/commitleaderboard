@@ -1,5 +1,6 @@
 "use client";
 
+import { useUser } from "@clerk/nextjs";
 import {
   Authenticated,
   AuthLoading,
@@ -10,6 +11,16 @@ import { api } from "@/convex/_generated/api";
 
 export function ViewerStatus() {
   const viewer = useQuery(api.viewer.current, {});
+  const { isLoaded: isClerkLoaded, user } = useUser();
+
+  const email =
+    user?.primaryEmailAddress?.emailAddress ??
+    user?.emailAddresses.find(
+      (emailAddress) => emailAddress.id === user.primaryEmailAddressId,
+    )?.emailAddress ??
+    null;
+  const name = user?.fullName ?? null;
+  const username = user?.username ?? null;
 
   return (
     <section className="w-full rounded border border-zinc-200 bg-white p-6 text-sm shadow-sm">
@@ -25,8 +36,8 @@ export function ViewerStatus() {
         </p>
       </Unauthenticated>
       <Authenticated>
-        {viewer === undefined ? (
-          <p className="text-zinc-600">Loading Convex viewer...</p>
+        {viewer === undefined || !isClerkLoaded ? (
+          <p className="text-zinc-600">Loading Clerk and Convex...</p>
         ) : viewer === null ? (
           <p className="text-zinc-600">Convex returned no viewer identity.</p>
         ) : (
@@ -36,15 +47,21 @@ export function ViewerStatus() {
             </p>
             <dl className="grid gap-2 text-zinc-700">
               <div>
-                <dt className="font-medium text-zinc-950">Name</dt>
-                <dd>{viewer.name ?? "No name on token"}</dd>
+                <dt className="font-medium text-zinc-950">Clerk name</dt>
+                <dd>{name ?? "No name on Clerk profile"}</dd>
               </div>
               <div>
-                <dt className="font-medium text-zinc-950">Email</dt>
-                <dd>{viewer.email ?? "No email on token"}</dd>
+                <dt className="font-medium text-zinc-950">Clerk username</dt>
+                <dd>{username ?? "No username on Clerk profile"}</dd>
               </div>
               <div>
-                <dt className="font-medium text-zinc-950">Token</dt>
+                <dt className="font-medium text-zinc-950">Clerk email</dt>
+                <dd>{email ?? "No email on Clerk profile"}</dd>
+              </div>
+              <div>
+                <dt className="font-medium text-zinc-950">
+                  Convex auth token
+                </dt>
                 <dd className="break-all font-mono text-xs">
                   {viewer.tokenIdentifier}
                 </dd>

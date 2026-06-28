@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-06-27 10:53'
-updated_date: '2026-06-28 16:48'
+updated_date: '2026-06-28 17:00'
 labels:
   - phase-1-lock-setup
   - v1
@@ -25,7 +25,7 @@ Set up the initial Commit Leaderboard repository skeleton with Next.js App Route
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
 - [x] #1 pnpm dev runs successfully.
-- [ ] #2 A Convex query renders on a page authenticated via Clerk.
+- [x] #2 A Convex query renders on a page authenticated via Clerk.
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -47,4 +47,6 @@ Full implementation plan: docs/superpowers/plans/2026-06-28-task-1-stack-skeleto
 Implemented the stack skeleton: ClerkProvider + ConvexProviderWithClerk, Convex auth config, viewer.current query, Clerk middleware proxy, smoke-test page, pnpm-only README and scripts.
 Verification: pnpm run typecheck passed; pnpm run lint passed; pnpm run convex:deploy-once passed; pnpm run build passed; pnpm dev started outside sandbox at http://localhost:3000 and / returned HTTP 200.
 AC #2 remains pending manual signed-in browser verification: sign in with Clerk and confirm the page shows "Convex query authenticated."
+
+User verified the signed-in page in Arc: Convex query rendered as authenticated with a Clerk tokenIdentifier. Follow-up bugfix: ViewerStatus now reads display name, username, and primary email from Clerk useUser() instead of expecting those fields in Convex JWT claims; Convex token remains shown as the backend auth proof. Verification after fix: pnpm run typecheck, pnpm run lint, and pnpm run build passed.
 <!-- SECTION:NOTES:END -->
