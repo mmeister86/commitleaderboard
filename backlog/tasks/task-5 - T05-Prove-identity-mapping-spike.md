@@ -1,10 +1,10 @@
 ---
 id: TASK-5
 title: T05 - Prove identity mapping spike
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-06-27 10:53'
-updated_date: '2026-06-28 19:49'
+updated_date: '2026-06-28 19:53'
 labels:
   - phase-1-lock-setup
   - v1
@@ -44,3 +44,9 @@ Implemented identity mapping spike. Evidence: seeded Convex dev user githubLogin
 
 Addressed code review findings: GitHub push identity proof now runs only after HMAC verification, malformed signed push JSON returns 400 instead of crashing, missing webhook secret fails closed, and resolver canonicalizes GitHub login before users.by_github_login lookup. Re-verified real signed push webhook with proof commit c012ec0fec842d104c2e9ad577b9ebe12fc7a2cf and delivery 5a86a02a-732a-11f1-85d3-b2a5f6e8facc resolving to seeded user jh7c1s0ezf1xw3sr6kg0erwc2d89gz1b.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Implemented and verified the identity-mapping spike: push commits are attributed only through commit.author.username, canonicalized to users.by_github_login, protected behind GitHub HMAC verification, and documented with an unattributed fallback that never guesses from pusher or sender. Verified with Vitest, typecheck, lint, Convex deploy-once, and real signed GitHub push delivery 5a86a02a-732a-11f1-85d3-b2a5f6e8facc resolving commit c012ec0fec842d104c2e9ad577b9ebe12fc7a2cf to seeded user jh7c1s0ezf1xw3sr6kg0erwc2d89gz1b.
+<!-- SECTION:FINAL_SUMMARY:END -->
