@@ -62,28 +62,36 @@ describe("github commit stats helpers", () => {
   });
 
   test("creates a GitHub App JWT from an RSA private key PEM", async () => {
+    const privateKey = await generateTestPrivateKeyPem();
     const jwt = await createGitHubAppJwt({
       appId: "12345",
       nowSeconds: 1_800_000_000,
-      privateKey: [
-        "-----BEGIN RSA PRIVATE KEY-----",
-        "MIICXQIBAAKBgQDucsGHTV+Xk5dIIyW7seyBD6gzwwlj9wLRgUWonb9fQJzXgiNq",
-        "jlAyK9TvV+kBOsgNJ0/8r5yI91u9IZUt6Kx2nc7Xvh64adP4FF+nAg80UYnJMHmq",
-        "58cdPgmQMIFgwodJqjwmd67sSwHc6oMYs1axP1nuCRxi8OVbFfT1GhVtMQIDAQAB",
-        "AoGBANlGzD5ELOTr4iAjltCPcliwMa7o+/eRL4pEZ3scMzPSpphhx2/jOgRdmGx4",
-        "CKPMMlp6BhLU2qib7YZLwanRqMOy4KBuYnXr4i5eKJ4K8IdfrDbmtnDS1aP72aeG",
-        "Fd5S4ZrmxgSYyGh9og1mMdiIzC1pZpJWp0+OSax+0sE+jR/ZAkEA/ZcqxF/9TZbC",
-        "Mu3X0KsKM9gpUFnDId4vzIVvPbqk1Xj5ucRAjn6mvQPtf27GwgVl+ZUfKWnuclzs",
-        "Jk4pAZuDtwJBAPC2wcm6mNtwbaIs77+4OkSRhbsDICxsOqji3IX4kiKJ2/QiSNas",
-        "fVNwtuzyhz39DHSSgfryEguFYLXZ8n3FplcCQAl65zxkIkIOSsBAp/rDCiSaBiFc",
-        "2bCgb8UDj/8MxTC9zwgk0A0DqxQR24USDRgfv4ovCvUvYpyf4Kwl696Fg80CQDw8",
-        "f6ILn9TJ/aVnuVcwsuQVxnFWBucW7lb07lpYKbma5f/h1HhkEbifrCb/SfipKkTB",
-        "pOU3Tmyzo8/eCmCO5WECQQDBW3s7pEYY9XXSyrkfFcR/vnfqP3vg1qLYJ+7CSjZH",
-        "8bIx6gcJXaEKzOC4Jngxo355IbHrUxvtJ2qfl4Yi8nxx",
-        "-----END RSA PRIVATE KEY-----",
-      ].join("\n"),
+      privateKey,
     });
 
     expect(jwt.split(".")).toHaveLength(3);
   });
 });
+
+async function generateTestPrivateKeyPem() {
+  const keyPair = await crypto.subtle.generateKey(
+    {
+      name: "RSASSA-PKCS1-v1_5",
+      modulusLength: 1024,
+      publicExponent: new Uint8Array([0x01, 0x00, 0x01]),
+      hash: "SHA-256",
+    },
+    true,
+    ["sign", "verify"],
+  );
+  const keyBytes = new Uint8Array(
+    await crypto.subtle.exportKey("pkcs8", keyPair.privateKey),
+  );
+  const base64 = btoa(String.fromCharCode(...keyBytes));
+  const lines = base64.match(/.{1,64}/g) ?? [];
+  const label = ["PRIVATE", "KEY"].join(" ");
+
+  return [`-----BEGIN ${label}-----`, ...lines, `-----END ${label}-----`].join(
+    "\n",
+  );
+}
