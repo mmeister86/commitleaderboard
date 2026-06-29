@@ -7,6 +7,7 @@ export type NormalizedContributionCandidate = {
   day: string;
   onDefaultBranch: boolean;
   githubLogin: string | null;
+  githubInstallationId: string | null;
 };
 
 export type SupportedGitHubWebhookEvent =
@@ -49,6 +50,7 @@ function normalizePushPayload(
   const repo = repositoryFullName(payload.repository);
   const defaultBranch = repositoryDefaultBranch(payload.repository);
   const ref = stringField(payload, "ref");
+  const githubInstallationId = installationId(payload);
 
   if (repo === null || defaultBranch === null || ref === null) {
     return [];
@@ -74,6 +76,7 @@ function normalizePushPayload(
         day,
         onDefaultBranch: ref === `refs/heads/${defaultBranch}`,
         githubLogin: userLogin(commit.author),
+        githubInstallationId,
       },
     ];
   });
@@ -88,6 +91,7 @@ function normalizePullRequestPayload(
 
   const repo = repositoryFullName(payload.repository);
   const defaultBranch = repositoryDefaultBranch(payload.repository);
+  const githubInstallationId = installationId(payload);
   const pullRequest = payload.pull_request;
 
   if (!isRecord(pullRequest) || repo === null || defaultBranch === null) {
@@ -113,6 +117,7 @@ function normalizePullRequestPayload(
       day,
       onDefaultBranch: baseRef === defaultBranch,
       githubLogin: userLogin(pullRequest.user),
+      githubInstallationId,
     },
   ];
 }
@@ -126,6 +131,7 @@ function normalizePullRequestReviewPayload(
 
   const repo = repositoryFullName(payload.repository);
   const defaultBranch = repositoryDefaultBranch(payload.repository);
+  const githubInstallationId = installationId(payload);
   const review = payload.review;
   const pullRequest = payload.pull_request;
 
@@ -156,6 +162,7 @@ function normalizePullRequestReviewPayload(
       day,
       onDefaultBranch: baseRef === defaultBranch,
       githubLogin: userLogin(review.user),
+      githubInstallationId,
     },
   ];
 }
@@ -176,6 +183,24 @@ function repositoryDefaultBranch(value: unknown): string | null {
 
   const defaultBranch = stringField(value, "default_branch");
   return defaultBranch === "" ? null : defaultBranch;
+}
+
+function installationId(value: unknown): string | null {
+  if (!isRecord(value) || !isRecord(value.installation)) {
+    return null;
+  }
+
+  const id = value.installation.id;
+
+  if (typeof id === "number" && Number.isFinite(id)) {
+    return String(id);
+  }
+
+  if (typeof id === "string" && id.trim() !== "") {
+    return id;
+  }
+
+  return null;
 }
 
 function userLogin(value: unknown): string | null {

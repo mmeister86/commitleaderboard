@@ -7,6 +7,9 @@ import {
 
 const pushPayload = {
   ref: "refs/heads/main",
+  installation: {
+    id: 3828258385084547000,
+  },
   repository: {
     full_name: "mmeister86/commit-leaderboard-private-test",
     default_branch: "main",
@@ -33,6 +36,7 @@ describe("normalizeGitHubWebhookPayload", () => {
         day: "2026-06-28",
         onDefaultBranch: true,
         githubLogin: "mmeister86",
+        githubInstallationId: "3828258385084547000",
       },
     ] satisfies NormalizedContributionCandidate[]);
   });
@@ -52,6 +56,7 @@ describe("normalizeGitHubWebhookPayload", () => {
         day: "2026-06-28",
         onDefaultBranch: false,
         githubLogin: "mmeister86",
+        githubInstallationId: "3828258385084547000",
       },
     ] satisfies NormalizedContributionCandidate[]);
   });
@@ -59,6 +64,9 @@ describe("normalizeGitHubWebhookPayload", () => {
   test("normalizes merged pull requests and ignores unmerged pull requests", () => {
     const mergedPayload = {
       action: "closed",
+      installation: {
+        id: 3828258385084547000,
+      },
       repository: {
         full_name: "mmeister86/commit-leaderboard-private-test",
         default_branch: "main",
@@ -85,6 +93,7 @@ describe("normalizeGitHubWebhookPayload", () => {
         day: "2026-06-28",
         onDefaultBranch: true,
         githubLogin: "mmeister86",
+        githubInstallationId: "3828258385084547000",
       },
     ] satisfies NormalizedContributionCandidate[]);
 
@@ -102,6 +111,9 @@ describe("normalizeGitHubWebhookPayload", () => {
   test("normalizes submitted pull request reviews and ignores other review actions", () => {
     const submittedPayload = {
       action: "submitted",
+      installation: {
+        id: 3828258385084547000,
+      },
       repository: {
         full_name: "mmeister86/commit-leaderboard-private-test",
         default_branch: "main",
@@ -130,6 +142,7 @@ describe("normalizeGitHubWebhookPayload", () => {
         day: "2026-06-28",
         onDefaultBranch: true,
         githubLogin: "mmeister86",
+        githubInstallationId: "3828258385084547000",
       },
     ] satisfies NormalizedContributionCandidate[]);
 
