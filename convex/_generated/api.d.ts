@@ -8,9 +8,12 @@
  * @module
  */
 
-import type * as http from "../http.js";
+import type * as githubCommitStats from "../githubCommitStats.js";
+import type * as githubRateLimits from "../githubRateLimits.js";
 import type * as githubWebhookIngest from "../githubWebhookIngest.js";
+import type * as http from "../http.js";
 import type * as identityMapping from "../identityMapping.js";
+import type * as lib_githubCommitStats from "../lib/githubCommitStats.js";
 import type * as lib_githubWebhookPayloads from "../lib/githubWebhookPayloads.js";
 import type * as lib_identityMapping from "../lib/identityMapping.js";
 import type * as lib_scoring from "../lib/scoring.js";
@@ -23,9 +26,12 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
-  http: typeof http;
+  githubCommitStats: typeof githubCommitStats;
+  githubRateLimits: typeof githubRateLimits;
   githubWebhookIngest: typeof githubWebhookIngest;
+  http: typeof http;
   identityMapping: typeof identityMapping;
+  "lib/githubCommitStats": typeof lib_githubCommitStats;
   "lib/githubWebhookPayloads": typeof lib_githubWebhookPayloads;
   "lib/identityMapping": typeof lib_identityMapping;
   "lib/scoring": typeof lib_scoring;
@@ -58,4 +64,6 @@ export declare const internal: FilterApi<
   FunctionReference<any, "internal">
 >;
 
-export declare const components: {};
+export declare const components: {
+  rateLimiter: import("@convex-dev/rate-limiter/_generated/component.js").ComponentApi<"rateLimiter">;
+};

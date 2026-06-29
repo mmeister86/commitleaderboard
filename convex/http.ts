@@ -2,6 +2,7 @@ import { httpRouter } from "convex/server";
 
 import { internal } from "./_generated/api";
 import { httpAction } from "./_generated/server";
+import { githubRateLimiter } from "./githubRateLimits";
 import {
   parseWebhookJson,
   verifyGitHubWebhookSignature,
@@ -36,6 +37,14 @@ http.route({
       });
 
       return new Response("Invalid signature", { status: 401 });
+    }
+
+    const rateLimit = await githubRateLimiter.limit(ctx, "githubWebhookIngest", {
+      key: event ?? "unknown",
+    });
+
+    if (!rateLimit.ok) {
+      return new Response("Rate limited", { status: 429 });
     }
 
     if (!isSupportedGitHubWebhookEvent(event)) {

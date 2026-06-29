@@ -1,8 +1,10 @@
 import { v } from "convex/values";
 
+import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { internalMutation, type MutationCtx } from "./_generated/server";
 import { canonicalizeGithubLogin } from "./lib/identityMapping";
+import { shaFromCommitExternalId } from "./lib/githubCommitStats";
 import { computeScore, type ScoreContribution } from "./lib/scoring";
 
 const contributionKind = v.union(
@@ -18,6 +20,7 @@ const normalizedContributionCandidate = v.object({
   day: v.string(),
   onDefaultBranch: v.boolean(),
   githubLogin: v.union(v.string(), v.null()),
+  githubInstallationId: v.union(v.string(), v.null()),
   lines: v.optional(v.number()),
 });
 
@@ -52,6 +55,7 @@ export const ingestNormalizedContributions = internalMutation({
     let insertedContributionRows = 0;
     const now = Date.now();
     const affectedScores = new Map<string, AffectedScoreKey>();
+    let queuedCommitStatFetches = 0;
 
     for (const candidate of args.candidates) {
       const existingContribution = await ctx.db
@@ -95,6 +99,25 @@ export const ingestNormalizedContributions = internalMutation({
           period,
         });
       }
+
+      if (await shouldQueueCommitStatFetch(ctx, candidate)) {
+        const sha = shaFromCommitExternalId(candidate.externalId);
+
+        if (sha !== null && candidate.githubInstallationId !== null) {
+          await ctx.db.insert("commitStatFetches", {
+            externalId: candidate.externalId,
+            githubInstallationId: candidate.githubInstallationId,
+            repo: candidate.repo,
+            sha,
+            status: "pending",
+            attempts: 0,
+            nextAttemptAt: 0,
+            createdAt: now,
+            updatedAt: now,
+          });
+          queuedCommitStatFetches += 1;
+        }
+      }
     }
 
     for (const affectedScore of affectedScores.values()) {
@@ -108,12 +131,47 @@ export const ingestNormalizedContributions = internalMutation({
       insertedContributionRows,
     });
 
+    if (queuedCommitStatFetches > 0) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.githubCommitStats.processPendingCommitStats,
+        { now },
+      );
+    }
+
     return {
       duplicateDelivery: false,
       insertedContributionRows,
+      queuedCommitStatFetches,
     };
   },
 });
+
+async function shouldQueueCommitStatFetch(
+  ctx: MutationCtx,
+  candidate: {
+    kind: "commit" | "pr_merged" | "review";
+    externalId: string;
+    githubInstallationId: string | null;
+    lines?: number;
+  },
+) {
+  if (
+    candidate.kind !== "commit" ||
+    candidate.lines !== undefined ||
+    candidate.githubInstallationId === null ||
+    shaFromCommitExternalId(candidate.externalId) === null
+  ) {
+    return false;
+  }
+
+  const existingFetch = await ctx.db
+    .query("commitStatFetches")
+    .withIndex("by_external_id", (q) => q.eq("externalId", candidate.externalId))
+    .take(1);
+
+  return existingFetch.length === 0;
+}
 
 function scoreKey(userId: Id<"users">, period: ContributionPeriod) {
   return `${userId}:${period}`;

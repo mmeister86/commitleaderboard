@@ -15,6 +15,13 @@ const repositorySelection = v.union(
   v.literal("selected"),
 );
 
+const commitStatFetchStatus = v.union(
+  v.literal("pending"),
+  v.literal("processing"),
+  v.literal("complete"),
+  v.literal("failed"),
+);
+
 export default defineSchema({
   users: defineTable({
     clerkId: v.string(),
@@ -63,6 +70,26 @@ export default defineSchema({
     receivedAt: v.number(),
     insertedContributionRows: v.number(),
   }).index("by_delivery_id", ["deliveryId"]),
+
+  commitStatFetches: defineTable({
+    externalId: v.string(),
+    githubInstallationId: v.string(),
+    repo: v.string(),
+    sha: v.string(),
+    status: commitStatFetchStatus,
+    attempts: v.number(),
+    nextAttemptAt: v.number(),
+    lastMetadataError: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_external_id", ["externalId"])
+    .index("by_status_and_next_attempt_at", ["status", "nextAttemptAt"])
+    .index("by_installation_status_and_next_attempt_at", [
+      "githubInstallationId",
+      "status",
+      "nextAttemptAt",
+    ]),
 
   scores: defineTable({
     userId: v.id("users"),
